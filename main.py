@@ -39,8 +39,11 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
+    app_interface = await app.mongodb["app"].find_one()
+    api_is_active = app_interface.get("api_is_active")
+
     data = await app.mongodb["data"].find().to_list(length=None)
-    context = dict(request=request, data=data)
+    context = dict(request=request,  data=data, api_is_active=api_is_active)
     response = templates.TemplateResponse("index.html", context)
     return response
 
@@ -53,50 +56,47 @@ async def add_data(request: Request):
     if not api_is_active:
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "API is not active"})
 
-    # Convert the shutdown time to an offset-aware datetime
-    api_shutdown_at = app_interface.get("api_shutdown_at")
-    if api_shutdown_at:
-        api_shutdown_at = api_shutdown_at.replace(tzinfo=timezone.utc)
-    
-    if api_shutdown_at and api_shutdown_at < datetime.now(timezone.utc):
-        await app.mongodb["app"].update_one({"_id": app_interface["_id"]}, {"$set": {"api_is_active": False}})
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "API is shutdown"})
-
     try:
         data = await request.json()
+        temperature = data.get("temperature")
+        humidity = data.get("humidity")
+
+        if not temperature or not humidity:
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "Temperature and humidity are required"})
+
         # Insert the data into the 'data' collection
-        await request.app.mongodb["data"].insert_one(dict(data=data, timestamp=datetime.now(timezone.utc)))
+        await request.app.mongodb["data"].insert_one(
+            dict(
+                temperature=temperature, 
+                humidity=humidity, 
+                timestamp=datetime.now(timezone.utc)
+            )
+        )
         # Return a success response
         return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "Data added successfully"})
     except Exception as e:
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": str(e)})
 
 
-# @app.post("/add-data", response_class=JSONResponse)
-# async def add_data(request: Request):
-#     data = await request.json()
-#     # Add a timestamp to the data
-#     data_with_timestamp = {
-#         "temperature": data.get("temperature"),
-#         "humidity": data.get("humidity"),
-#         "timestamp": datetime.now(timezone.utc)
-#     }
-#     # Insert the data into the 'data' collection
-#     result = await request.app.mongodb["data"].insert_one(data_with_timestamp)
-#     # Return a success response with the inserted ID
-#     return JSONResponse(status_code=status.HTTP_200_OK, content={"inserted_id": str(result.inserted_id)})
+@app.post("/update-app-interface", response_class=JSONResponse)
+async def update_app_interface(request: Request):
+    json_data = await request.json()
+    api_is_active = json_data.get("api_is_active")
+
+    app_interface = await app.mongodb["app"].find_one()
+    await app.mongodb["app"].update_one({"_id": app_interface["_id"]}, {"$set": {"api_is_active": api_is_active}})
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "App interface updated successfully"})
 
 
 @app.get("/get-data", response_class=JSONResponse)
 async def get_data(request: Request):
     app_interface = await app.mongodb["app"].find_one()
-
     if app_interface is None:
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"error": "App interface not found"})
 
-    data = await app.mongodb["data"].find_one()
-
-    return JSONResponse(status_code=status.HTTP_200_OK, content={"app": app_interface, "data": data})
+    data = await app.mongodb["data"].find().to_list(length=None)
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"data": data})
 
 
 if __name__ == "__main__":

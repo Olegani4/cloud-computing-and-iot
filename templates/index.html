@@ -4,13 +4,76 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CW</title>
-
+    <title>Room Data</title>
     <link rel="stylesheet" href="../static/css/styles.css" />
 </head>
 
 <body>
-    <h1>{{ data }}</h1>
+    <header>
+        <h1>Room Data Monitoring</h1>
+    </header>
+    <main>
+        <div class="controls">
+            {% if api_is_active %}
+            <button class="active" id="toggle-api" status="active" onclick="toggleApi()">
+                Disable API
+            </button>
+            {% else %}
+            <button id="toggle-api" status="inactive" onclick="toggleApi()">
+                Enable API
+            </button>
+            {% endif %}
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Temperature (°C)</th>
+                    <th>Humidity (%)</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in data %}
+                <tr>
+                    <td>{{ item.temperature }}</td>
+                    <td>{{ item.humidity }}</td>
+                    <td>{{ item.timestamp.strftime('%d/%m/%Y') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </main>
+    <footer>
+        <p>&copy; 2024 Cloud Computing and IoT Coursework</p>
+    </footer>
+
+    <script>
+        async function toggleApi() {
+            const button = document.getElementById('toggle-api'); 
+            const apiIsActive = button.getAttribute('status') === 'active';
+
+            try {
+                const response = await fetch('/update-app-interface', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ api_is_active: !apiIsActive })
+                });
+
+                button.textContent = apiIsActive ? 'Enable API' : 'Disable API';
+                button.setAttribute('status', apiIsActive ? 'inactive' : 'active');
+                if (apiIsActive) {
+                    button.classList.remove('active');
+                } else {
+                    button.classList.add('active');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while toggling the API status.');
+            }
+        }
+    </script>
 </body>
 
 </html>
