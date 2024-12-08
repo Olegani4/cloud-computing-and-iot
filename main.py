@@ -38,8 +38,6 @@ app = FastAPI(lifespan=lifespan)  # TODO (openapi_url=None) or (docs_url=None)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
-# Endpoints
-
 @app.get("/", response_class=HTMLResponse)
 async def login(request: Request):
     context = dict(request=request, data="Hello, World! 123")
