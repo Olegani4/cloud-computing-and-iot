@@ -49,15 +49,25 @@ async def root(request: Request):
 async def add_data(request: Request):
     app_interface = await app.mongodb["app"].find_one()
 
-    if app_interface.get("api_shutdown_at") and app_interface.get("api_shutdown_at") < datetime.now(timezone.utc):
+    api_is_active = app_interface.get("api_is_active")
+    if not api_is_active:
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "API is not active"})
+
+    # Convert the shutdown time to an offset-aware datetime
+    api_shutdown_at = app_interface.get("api_shutdown_at")
+    if api_shutdown_at:
+        api_shutdown_at = api_shutdown_at.replace(tzinfo=timezone.utc)
+    
+    if api_shutdown_at and api_shutdown_at < datetime.now(timezone.utc):
+        await app.mongodb["app"].update_one({"_id": app_interface["_id"]}, {"$set": {"api_is_active": False}})
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "API is shutdown"})
 
     try:
         data = await request.json()
         # Insert the data into the 'data' collection
-        await request.app.mongodb["data"].insert_one(data)
+        await request.app.mongodb["data"].insert_one(dict(data=data, timestamp=datetime.now(timezone.utc)))
         # Return a success response
-        return JSONResponse(status_code=status.HTTP_200_OK)
+        return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "Data added successfully"})
     except Exception as e:
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": str(e)})
 
