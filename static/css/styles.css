@@ -1,0 +1,97 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap");
+*,
+*::after,
+*::before {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  border-radius: 0;
+  -webkit-border-radius: 0;
+  font-family: "Poppins", sans-serif;
+}
+
+html {
+  font-size: 62.5%;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+  overflow-x: hidden;
+}
+
+main {
+  min-height: calc(100vh - 6.9rem);
+  padding: 10rem 8rem 0 8rem;
+}
+
+body,
+button,
+input,
+textarea {
+  font-size: 1.8rem;
+}
+
+input,
+textarea {
+  resize: none;
+  box-sizing: border-box;
+  user-select: none;
+  outline: none;
+  border-radius: 1rem;
+  padding: 0.5rem 1rem;
+  overflow: hidden;
+  overflow-y: scroll;
+  border: 0.1rem solid #ccc;
+}
+input::-webkit-scrollbar,
+textarea::-webkit-scrollbar {
+  width: 0;
+}
+
+ul {
+  list-style: none;
+}
+
+a {
+  text-decoration: none;
+  color: #346aff;
+}
+a:hover {
+  color: #0035c7;
+}
+a:active {
+  color: rgba(52, 106, 255, 0.4862745098) !important;
+}
+
+h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+}
+
+small {
+  font-size: 1.4rem !important;
+}
+
+@media (max-width: 1120px) {
+  main {
+    padding: 10rem 2rem 0 2rem;
+  }
+  h1 {
+    font-size: 1.8rem;
+  }
+  small {
+    font-size: 1.2rem !important;
+  }
+  p,
+  input,
+  label,
+  textarea,
+  button {
+    font-size: 1.4rem;
+  }
+  .footnote {
+    font-size: 1rem;
+  }
+}
+
+/*# sourceMappingURL=styles.css.map */
