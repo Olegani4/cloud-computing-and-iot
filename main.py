@@ -51,10 +51,9 @@ async def root(request: Request):
 @app.post("/add-data", response_class=JSONResponse)
 async def add_data(request: Request):
     app_interface = await app.mongodb["app"].find_one()
-
     api_is_active = app_interface.get("api_is_active")
     if not api_is_active:
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content={"error": "API is not active"})
+        return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"error": "API is not active"})
 
     try:
         data = await request.json()
@@ -67,6 +66,7 @@ async def add_data(request: Request):
         # Insert the data into the 'data' collection
         await request.app.mongodb["data"].insert_one(
             dict(
+                item_id=str(uuid4()),
                 temperature=temperature, 
                 humidity=humidity, 
                 timestamp=datetime.now(timezone.utc)
@@ -89,13 +89,28 @@ async def update_app_interface(request: Request):
     return JSONResponse(status_code=status.HTTP_200_OK, content={"message": "App interface updated successfully"})
 
 
-@app.get("/get-data", response_class=JSONResponse)
-async def get_data(request: Request):
+@app.get("/get-data/{last_data_item_id}", response_class=JSONResponse)
+async def get_data(request: Request, last_data_item_id: str):
     app_interface = await app.mongodb["app"].find_one()
     if app_interface is None:
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"error": "App interface not found"})
 
-    data = await app.mongodb["data"].find().to_list(length=None)
+    # Find all data items with an item_id after document with id last_data_item_id
+    last_data_item = await app.mongodb["data"].find_one({"item_id": last_data_item_id})
+    if not last_data_item:
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content={"error": "Last data item not found"})
+
+    last_data_item_timestamp = last_data_item.get("timestamp")
+    data = await app.mongodb["data"].find(
+        {"timestamp": {"$gt": last_data_item_timestamp}},
+        {"_id": 0}
+    ).to_list(length=None)
+
+    # Convert datetime objects to strings
+    for item in data:
+        if 'timestamp' in item:
+            item['timestamp'] = item['timestamp'].isoformat()
+
     return JSONResponse(status_code=status.HTTP_200_OK, content={"data": data})
 
 

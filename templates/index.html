@@ -30,16 +30,24 @@
                     <th>Temperature (°C)</th>
                     <th>Humidity (%)</th>
                     <th>Date</th>
+                    <th>Time (UTC)</th>
                 </tr>
             </thead>
             <tbody>
-                {% for item in data %}
-                <tr>
-                    <td>{{ item.temperature }}</td>
-                    <td>{{ item.humidity }}</td>
-                    <td>{{ item.timestamp.strftime('%d/%m/%Y') }}</td>
-                </tr>
-                {% endfor %}
+                {% if data %}
+                    {% for item in data | reverse %}
+                    <tr id="{{ item.item_id }}">
+                        <td>{{ item.temperature }}</td>
+                        <td>{{ item.humidity }}</td>
+                        <td>{{ item.timestamp.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ item.timestamp.strftime('%H:%M:%S') }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4" style="font-size: 1.6rem; color: #999; user-select: none;">No data yet, please run the simulator</td>
+                    </tr>
+                {% endif %}
             </tbody>
         </table>
     </main>
@@ -73,6 +81,47 @@
                 alert('An error occurred while toggling the API status.');
             }
         }
+
+        async function updateData() {
+            const firstRow = document.querySelector('tbody tr:first-child');
+            const lastDataItemId = firstRow ? firstRow.getAttribute('id') : null;
+
+            try {
+                const response = await fetch('/get-data/' + (lastDataItemId || ''));
+                if (!response.ok) {
+                    throw new Error('Failed to fetch data');
+                }
+                const result = await response.json();
+                const data = result.data;
+
+                const tbody = document.querySelector('tbody');
+
+                if (data && data.length > 0) {
+                    data.reverse().forEach(item => {
+                        const existingRow = document.getElementById(item.item_id);
+                        if (!existingRow) {
+                            const row = document.createElement('tr');
+                            row.setAttribute('id', item.item_id);
+                            row.innerHTML = `
+                                <td>${item.temperature}</td>
+                                <td>${item.humidity}</td>
+                                <td>${new Date(item.timestamp).toLocaleDateString('en-GB')}</td>
+                                <td>${new Date(item.timestamp).toLocaleTimeString('en-GB', { hour12: false })}</td>
+                            `;
+                            tbody.insertBefore(row, tbody.firstChild);
+                        }
+                    });
+                } else if (!lastDataItemId) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="font-size: 1.6rem; color: #999; user-select: none;">No data yet, please run the simulator</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while loading data.');
+            }
+
+            setTimeout(updateData, 5000);
+        }
+        setTimeout(updateData, 5000)
     </script>
 </body>
 
