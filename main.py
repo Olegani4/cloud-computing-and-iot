@@ -51,6 +51,12 @@ async def root(request: Request):
 @app.post("/add-data", response_class=JSONResponse)
 async def add_data(request: Request):
     app_interface = await app.mongodb["app"].find_one()
+    api_key = app_interface.get("key")
+
+    authorization_header = request.headers.get("Authorization")
+    if authorization_header and authorization_header.startswith("Bearer ") and authorization_header[7:] != api_key:
+        return JSONResponse(status_code=status.HTTP_401_UNAUTHORIZED, content={"error": "Invalid API key"})
+
     api_is_active = app_interface.get("api_is_active")
     if not api_is_active:
         return JSONResponse(status_code=status.HTTP_403_FORBIDDEN, content={"error": "API is not active"})
